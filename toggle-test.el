@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t -*-
 ;;; toggle-test.el --- Toggle between source and test files in various programming languages
 
 ;; Copyright (C) 2014 Raghunandan Rao
@@ -36,8 +37,6 @@
 ;; - 1.0.2 - swapped order of detecting src and test to handle cases where test is subdirectory of src
 
 ;;; Code:
-
-(require 'cl)
 
 (defgroup toggle-test nil
   "IntelliJ like facility to quickly toggle between source and its corresponding test files."
@@ -84,24 +83,24 @@ One entry per project that provides naming convention and folder structure"
 (defun tgt-root-dir (proj) (file-truename (car (tgt-proj-prop :root-dir proj))))
 
 (defun tgt-relative-file-path (file proj dir-type) 
-  (reduce 
+  (cl-reduce 
    (lambda (cur_val dir) 
      (or cur_val 
 	 (let ((src-dir (file-name-as-directory 
 			 (expand-file-name dir (tgt-root-dir proj))))) 
 	   (if (tgt-is-ancestor-p src-dir file)
-	       (subseq file (length src-dir)))))) 
+	       (cl-subseq file (length src-dir)))))) 
    (cdr (assoc dir-type proj))
    :initial-value 'nil))
 
 ;; Given a file return its project 
 (defun tgt-proj-for (file)
-  (tgt-best-project (remove-if-not
+  (tgt-best-project (cl-remove-if-not
 		(lambda (proj) (tgt-is-ancestor-p (tgt-root-dir proj) file)) tgt-projects)))
 
 (defun tgt-best-project (projects)
   (if projects 
-	  (reduce (lambda (res proj) 
+	  (cl-reduce (lambda (res proj) 
 				(if (> (tgt-root-depth proj) (tgt-root-depth res)) proj res)) projects)
 	'nil))
 
@@ -109,18 +108,18 @@ One entry per project that provides naming convention and folder structure"
   (length (split-string (file-name-as-directory (tgt-root-dir proj)) "/")))
 
 (defun tgt-find-project-file-in-dirs (file proj)
-  (assert (tgt-proj-prop :src-dirs proj) nil "Source directory not configured")
-  (assert (tgt-proj-prop :test-dirs proj) nil "Test directory not configured")
+  (cl-assert (tgt-proj-prop :src-dirs proj) nil "Source directory not configured")
+  (cl-assert (tgt-proj-prop :test-dirs proj) nil "Test directory not configured")
   (let ((test-file-rel-path (tgt-relative-file-path file proj :test-dirs)))
     (if test-file-rel-path 
-	(values 'nil test-file-rel-path)
-      (values (tgt-relative-file-path file proj :src-dirs) 'nil))))
+	(cl-values 'nil test-file-rel-path)
+      (cl-values (tgt-relative-file-path file proj :src-dirs) 'nil))))
 
 
 (defun tgt-find-match (file) 
   (let ((proj (tgt-proj-for file)))
       (cond (proj 
-	   (multiple-value-bind 
+	   (cl-multiple-value-bind 
 	       (src-file-rel-path test-file-rel-path) 
 	       (tgt-find-project-file-in-dirs file proj)
 	     (cond
@@ -137,8 +136,8 @@ One entry per project that provides naming convention and folder structure"
 		 'nil))))
 
 (defun tgt-best-matches (all-matches)
-  (let ((exact-matches (remove-if-not #'file-exists-p all-matches)))
-	(if exact-matches (values t exact-matches) (values 'nil all-matches))))
+  (let ((exact-matches (cl-remove-if-not #'file-exists-p all-matches)))
+	(if exact-matches (cl-values t exact-matches) (cl-values 'nil all-matches))))
 
 (defun tgt-all-toggle-paths (rel-path proj dir-type file-names-generator)
   (tgt-make-full-paths 
@@ -238,7 +237,7 @@ One entry per project that provides naming convention and folder structure"
 
 (defun tgt-open (files)
   (if files
-	  (multiple-value-bind (exact-match-p matches) (tgt-best-matches files)
+	  (cl-multiple-value-bind (exact-match-p matches) (tgt-best-matches files)
 		(cond
 		 ((= 1 (length matches)) (tgt-open-file (car matches)))
 		 (t (tgt-show-matches matches exact-match-p))))))
